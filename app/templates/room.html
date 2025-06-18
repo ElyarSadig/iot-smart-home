@@ -1,42 +1,40 @@
 {% extends "base.html" %} {% block title %}Room {{ room_id }}{% endblock %} {%
 block content %}
 <div class="max-w-4xl mx-auto bg-white bg-opacity-90 p-6 rounded-xl shadow-lg">
-  <h2 class="text-2xl font-bold mb-4 text-indigo-700">
+  <h2 class="text-2xl font-bold mb-6 text-indigo-700">
     🧭 Room {{ room_id }} Details
   </h2>
 
-  <!-- Sensor Section -->
-  <div>
+  <!-- 🔧 Sensor Section -->
+  <section>
     <h3 class="text-lg font-semibold mb-2">🔧 Sensor Inputs</h3>
-    <form
-      hx-post="/room/{{ room_id }}/sensors"
-      hx-swap="outerHTML"
-      class="grid grid-cols-2 gap-4 text-sm"
-    >
-      {% for key, value in sensor.items() %}
-      <div>
-        <label class="block text-gray-600 font-medium mb-1">{{ key }}</label>
-        <input
-          type="number"
-          step="any"
-          name="{{ key }}"
-          value="{{ value }}"
-          class="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-        />
-      </div>
-      {% endfor %}
-      <div class="col-span-2 text-right mt-2">
-        <button
-          class="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-        >
-          Update Sensors
-        </button>
-      </div>
-    </form>
-  </div>
 
-  <!-- Predicted Temp -->
-  <div class="mt-6">
+    <!-- Persistent container -->
+    <div id="sensor-wrapper">
+      <div
+        hx-get="/room/{{ room_id }}/sensors"
+        hx-trigger="load"
+        hx-swap="innerHTML"
+      >
+        <p class="text-sm text-gray-500">Loading sensor inputs...</p>
+      </div>
+    </div>
+
+    <!-- Optimize Button (reuses the wrapper) -->
+    <div class="mt-4 text-right">
+      <button
+        hx-post="/room/{{ room_id }}/optimize"
+        hx-target="#sensor-wrapper"
+        hx-swap="innerHTML"
+        class="px-4 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition text-sm"
+      >
+        ⚙️ Optimize to Comfort
+      </button>
+    </div>
+  </section>
+
+  <!-- 📈 Predicted Temperature -->
+  <section class="mt-8">
     <h3 class="text-lg font-semibold">📈 Predicted Temperature</h3>
     <div
       id="prediction-box"
@@ -45,27 +43,39 @@ block content %}
       hx-trigger="every 2s"
       hx-swap="innerHTML"
     >
-      {{ prediction }}°C
+      <span class="text-sm text-gray-400">Calculating...</span>
     </div>
-  </div>
+  </section>
 
-  <!-- Preference Section -->
-  <div class="mt-6">
+  <!-- 💚 Comfort Preference -->
+  <section class="mt-8">
     <h3 class="text-lg font-semibold">💚 Comfort Preference</h3>
-    <p class="text-gray-700 text-sm mb-1">
-      Current: <strong>{{ preference }}°C</strong>
-    </p>
+
+    <!-- Persistent container -->
+    <div id="preference-box">
+      <div
+        hx-get="/room/{{ room_id }}/preference"
+        hx-trigger="load"
+        hx-swap="innerHTML"
+      >
+        <p class="text-sm text-gray-500">Loading preference...</p>
+      </div>
+    </div>
+
+    <!-- Submit New Preference -->
     <form
-      method="post"
-      action="/room/{{ room_id }}/preference"
-      class="flex space-x-2"
+      hx-post="/room/{{ room_id }}/preference"
+      hx-target="#preference-box"
+      hx-swap="innerHTML"
+      class="flex space-x-2 mt-2"
     >
       <input
         type="number"
         step="any"
         name="preference"
         placeholder="e.g. 24.5"
-        class="border border-gray-300 px-2 py-1 rounded text-sm"
+        class="border border-gray-300 px-2 py-1 rounded text-sm w-24"
+        required
       />
       <button
         class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
@@ -73,9 +83,10 @@ block content %}
         Save Preference
       </button>
     </form>
-  </div>
+  </section>
 
-  <div class="mt-8 text-sm text-right">
+  <!-- Back to Dashboard -->
+  <div class="mt-10 text-sm text-right">
     <a href="/" class="text-blue-600 hover:underline">← Back to Dashboard</a>
   </div>
 </div>

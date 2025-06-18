@@ -1,0 +1,25 @@
+<form
+  hx-post="/room/{{ room_id }}/sensors"
+  hx-swap="outerHTML"
+  class="grid grid-cols-2 gap-4 text-sm"
+>
+  {% for key, value in sensor.items() %}
+  <div>
+    <label class="block text-gray-600 font-medium mb-1">{{ key }}</label>
+    <input
+      type="number"
+      step="any"
+      name="{{ key }}"
+      value="{{ value }}"
+      class="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+    />
+  </div>
+  {% endfor %}
+  <div class="col-span-2 text-right mt-2">
+    <button
+      class="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+    >
+      Update Sensors
+    </button>
+  </div>
+</form>
