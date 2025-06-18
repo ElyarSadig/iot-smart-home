@@ -32,8 +32,53 @@
   <body
     class="h-screen overflow-hidden flex flex-col bg-gradient-to-br from-gray-100 to-blue-100"
   >
+    <div
+      id="flash-message"
+      class="hidden w-fit max-w-sm mx-auto mt-4 mb-8 px-4 py-2 rounded text-sm text-center shadow"
+    ></div>
     <main class="flex-grow flex items-center justify-center">
       {% block content %}{% endblock %}
     </main>
+    <script>
+      function showMessage(text, isError = false) {
+        const box = document.getElementById("flash-message");
+        if (!box) {
+          console.warn("⚠️ flash-message element not found!");
+          return;
+        }
+
+        box.textContent = text;
+        box.className = `mt-4 text-sm text-center px-3 py-2 rounded ${
+          isError
+            ? "bg-red-100 text-red-800 border border-red-300"
+            : "bg-green-100 text-green-800 border border-green-300"
+        }`;
+        box.classList.remove("hidden");
+
+        setTimeout(() => {
+          box.classList.add("hidden");
+        }, 3000);
+      }
+
+      // Success alert
+      document.body.addEventListener("htmx:afterOnLoad", function (evt) {
+        const verb = evt.detail?.requestConfig?.verb;
+        console.log("✅ htmx:afterOnLoad fired", { verb });
+
+        if (verb && verb.toLowerCase() === "post") {
+          showMessage("✅ Operation successful!");
+        }
+      });
+
+      // Error alert
+      document.body.addEventListener("htmx:responseError", function (evt) {
+        const verb = evt.detail?.requestConfig?.verb;
+        console.log("❌ htmx:responseError fired", { verb });
+
+        if (verb && verb.toLowerCase() === "post") {
+          showMessage("❌ Operation failed!", true);
+        }
+      });
+    </script>
   </body>
 </html>
