@@ -1,0 +1,56 @@
+{% extends "base.html" %} {% block title %}Room Climate Dashboard{% endblock %}
+{% block content %}
+<div
+  class="w-full max-w-6xl px-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+>
+  {% for room in rooms %}
+  <div
+    class="bg-white bg-opacity-90 backdrop-blur border border-blue-100 rounded-xl p-4 shadow hover:shadow-lg transition duration-300"
+  >
+    <div class="flex justify-between items-center mb-2">
+      <h3 class="text-lg font-semibold text-indigo-700">Room {{ room }}</h3>
+      <a href="/room/{{ room }}" class="text-sm text-blue-600 hover:underline"
+        >Details</a
+      >
+    </div>
+
+    <ul class="text-sm text-gray-800 space-y-1">
+      <li><strong>🌡 Temp:</strong> {{ 22 + loop.index }}°C</li>
+      <li><strong>💧 Humidity:</strong> {{ 40 + loop.index * 2 }}%</li>
+      <li><strong>👥 Occupants:</strong> {{ loop.index0 }}</li>
+      <li>
+        <strong>🔄 Activity:</strong>
+        {% if loop.index == 1 %}📖 Reading{% elif loop.index == 2 %}🧍
+        Standing{% else %}🚶 Walking{% endif %}
+      </li>
+      <li>
+        <strong>🚪 Door:</strong> {% if loop.index % 2 == 0 %}<span
+          class="text-green-600"
+          >Closed</span
+        >{% else %}<span class="text-red-600">Open</span>{% endif %}
+      </li>
+      <li>
+        <strong>🪟 Window:</strong> {% if loop.index % 2 == 1 %}<span
+          class="text-green-600"
+          >Closed</span
+        >{% else %}<span class="text-red-600">Open</span>{% endif %}
+      </li>
+    </ul>
+
+    <div class="mt-3 text-sm">
+      <strong class="text-gray-600">Predicted:</strong>
+      <span class="font-semibold text-blue-700 ml-1"
+        >{{ 23 + loop.index }}°C</span
+      >
+    </div>
+
+    <div class="mt-1 text-sm">
+      <strong class="text-gray-600">Comfort:</strong>
+      <span class="font-semibold text-green-700 ml-1"
+        >{{ 24 + loop.index }}°C</span
+      >
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
