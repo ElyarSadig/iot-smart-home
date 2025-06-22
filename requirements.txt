@@ -6,3 +6,4 @@ sqlalchemy
 htmx
 scikit-learn
 pydantic
+pandas
