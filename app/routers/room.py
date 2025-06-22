@@ -9,6 +9,8 @@ from pathlib import Path
 from fastapi import Form
 from app.model_registery import model_registry
 import pandas as pd
+from scipy.optimize import differential_evolution
+import numpy as np
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
@@ -168,17 +170,69 @@ async def insert_preference(request: Request, room_id: str, preference: float = 
 
 @router.post("/room/{room_id}/optimize", response_class=HTMLResponse)
 async def optimize_room(request: Request, room_id: str):
-    preference = 22
-    optimized_sensor = {
-        "Temp": round(preference, 1),
-        "RelH": 40 + (preference % 10),  # Fake logic
-        "Occ": 1,
-        "Act": 2,
-        "Door": 0,
-        "Win": 0,
-        "L1": 550,
-        "L2": 770
-    }
+    rf_model = model_registry.get(f"rf_{room_id.upper()}")
+    knn_model = model_registry.get(f"knn_{room_id.upper()}")
+
+    if rf_model is None or knn_model is None:
+        raise HTTPException(status_code=500, detail="Model(s) not loaded for this room.")
+
+    now = datetime.now()
+    hour = now.hour
+    minute = now.minute
+    dayofweek = now.weekday()
+
+    print(f"Requested optimization for room: {room_id}")
+    print(f"Looking for models: rf_{room_id.upper()}, knn_{room_id.upper()}")
+    print(f"Current time features → hour: {hour}, minute: {minute}, dayofweek: {dayofweek}")
+
+    feature_names = ["RelH", "L1", "L2", "Occ", "Act", "Door", "Win"]
+
+    def objective(x, model, comfort_temp, feature_names):
+        df = pd.DataFrame([x], columns=feature_names)
+        predicted_temp = model.predict(df)[0]
+        loss = abs(predicted_temp - comfort_temp)
+        print(f"  Trying input: {x} → Predicted Temp: {predicted_temp:.2f}, Target: {comfort_temp:.2f}, Loss: {loss:.4f}")
+        return loss
+
+    def optimize_sensor_inputs(knn_model, rf_model, hour, minute, dayofweek, feature_names):
+        df_time = pd.DataFrame([{
+            "hour": hour,
+            "minute": minute,
+            "dayofweek": dayofweek
+        }])
+        comfort_temp = rf_model.predict(df_time)[0]
+        print(f"Predicted comfort temperature: {comfort_temp:.2f}")
+
+        bounds = [
+            (0, 100),  # RelH
+            (0, 100),  # L1
+            (0, 100),  # L2
+            (0, 1),    # Occ
+            (0, 1),    # Act
+            (0, 1),    # Door
+            (0, 1)     # Win
+        ]
+
+        result = differential_evolution(objective, bounds, args=(knn_model, comfort_temp, feature_names), seed=42)
+
+        # Post-process: round categorical values
+        optimized = result.x
+        optimized[3] = round(optimized[3])  # Occ
+        optimized[4] = round(optimized[4])  # Act
+        optimized[5] = round(optimized[5])  # Door
+        optimized[6] = round(optimized[6])  # Win
+
+        print(f"Optimization success: {result.success}")
+        print(f"Optimized input: {optimized}")
+
+        return dict(zip(feature_names, optimized)), comfort_temp
+
+    optimized_sensor, comfort_temp = optimize_sensor_inputs(
+        knn_model, rf_model, hour, minute, dayofweek, feature_names
+    )
+
+    optimized_sensor["Temp"] = round(comfort_temp, 2)
+    print(f"Final optimized sensor package for room {room_id}: {optimized_sensor}")
 
     return templates.TemplateResponse("_sensors_form.html", {
         "request": request,

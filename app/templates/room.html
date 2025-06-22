@@ -53,6 +53,7 @@ block content %}
       <div
         hx-get="/room/{{ room_id }}/preference"
         hx-trigger="load"
+        hx-trigger="every 2s"
         hx-swap="innerHTML"
       >
         <p class="text-sm text-gray-500">Loading preference...</p>
