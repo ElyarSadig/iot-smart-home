@@ -17,23 +17,23 @@
     </div>
 
     <ul class="text-sm text-gray-800 space-y-1">
-      <li><strong>🌡 Temp:</strong> {{ room.sensor.Temp }}°C</li>
-      <li><strong>💧 Humidity:</strong> {{ room.sensor.RelH }}%</li>
-      <li><strong>👥 Occupants:</strong> {{ room.sensor.Occ }}</li>
+      <li><strong>🌡 Temp:</strong> {{ room.Temp }}°C</li>
+      <li><strong>💧 Humidity:</strong> {{ room.RelH }}%</li>
+      <li><strong>👥 Occupants:</strong> {{ room.Occ }}</li>
       <li>
         <strong>🔄 Activity:</strong>
-        {% if room.sensor.Act == 1 %}📖 Reading {% elif room.sensor.Act == 2
-        %}🧍 Standing {% elif room.sensor.Act == 3 %}🚶 Walking {% elif
-        room.sensor.Act == 4 %}💻 Working {% else %}❓ N/A {% endif %}
+        {% if room.Act == 1 %}📖 Reading {% elif room.Act == 2
+        %}🧍 Standing {% elif room.Act == 3 %}🚶 Walking {% elif
+        room.Act == 4 %}💻 Working {% else %}❓ N/A {% endif %}
       </li>
       <li>
         <strong>🚪 Door:</strong>
-        {% if room.sensor.Door == 0 %}<span class="text-green-600">Closed</span>
+        {% if room.Door == 0 %}<span class="text-green-600">Closed</span>
         {% else %}<span class="text-red-600">Open</span>{% endif %}
       </li>
       <li>
         <strong>🪟 Window:</strong>
-        {% if room.sensor.Win == 1 %}<span class="text-green-600">Closed</span>
+        {% if room.Win == 1 %}<span class="text-green-600">Closed</span>
         {% else %}<span class="text-red-600">Open</span>{% endif %}
       </li>
     </ul>
@@ -41,7 +41,7 @@
     <div class="mt-3 text-sm">
       <strong class="text-gray-600">Predicted:</strong>
       <span class="font-semibold text-blue-700 ml-1">
-        {{ room.sensor.Temp + 0.3 * room.sensor.Occ - 0.2 * room.sensor.Door |
+        {{ room.Temp + 0.3 * room.Occ - 0.2 * room.Door |
         round(1) }}°C
       </span>
     </div>
@@ -49,7 +49,7 @@
     <div class="mt-1 text-sm">
       <strong class="text-gray-600">Comfort:</strong>
       <span class="font-semibold text-green-700 ml-1">
-        {{ room.preference }}°C
+        {{ room.Comfort }}°C
       </span>
     </div>
   </div>

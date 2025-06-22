@@ -1,58 +1,57 @@
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from sqlalchemy import select
+from app.database import AsyncSessionLocal
+from app.database.models import SensorData, ComfortPreference, RoomPreference
+from datetime import datetime
 from pathlib import Path
 from fastapi import Form
-
-room_data = {
-    "A": {
-        "sensor": {"Temp": 23.0, "RelH": 45, "Occ": 1, "Act": 2, "Door": 0, "Win": 1, "L1": 500, "L2": 700},
-        "preference": 24.0
-    },
-    "B": {
-        "sensor": {"Temp": 22.5, "RelH": 42, "Occ": 2, "Act": 3, "Door": 1, "Win": 0, "L1": 480, "L2": 720},
-        "preference": 23.5
-    },
-    "C": {
-        "sensor": {"Temp": 24.1, "RelH": 50, "Occ": 1, "Act": 1, "Door": 0, "Win": 1, "L1": 510, "L2": 690},
-        "preference": 25.0
-    }
-}
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 
 @router.get("/room/{room_id}", response_class=HTMLResponse)
 async def room_page(request: Request, room_id: str):
-    # Mock sensor data
-    sensor = {
-        "Temp": 23.5,
-        "RelH": 45,
-        "Occ": 1,
-        "Act": 2,
-        "Door": 0,
-        "Win": 1,
-        "L1": 550,
-        "L2": 760,
-    }
-    preference = 24.5
-    prediction = 23.8
     return templates.TemplateResponse("room.html", {
         "request": request,
         "room_id": room_id,
-        "sensor": sensor,
-        "prediction": prediction,
-        "preference": preference,
     })
 
 @router.get("/room/{room_id}/sensors", response_class=HTMLResponse)
 async def get_sensor_form(request: Request, room_id: str):
-    sensor = room_data[room_id]["sensor"]
-    return templates.TemplateResponse("_sensors_form.html", {
-        "request": request,
-        "sensor": sensor,
-        "room_id": room_id
-    })
+    async with AsyncSessionLocal() as session:
+        stmt = (
+            select(SensorData)
+            .where(SensorData.room == room_id)
+            .order_by(SensorData.created_at.desc())
+        )
+        result = await session.execute(stmt)
+        sensor_row = result.scalars().first()
+
+        if not sensor_row:
+            return HTMLResponse(
+                content=f"<p class='text-red-500'>❌ No sensor data found for room {room_id}.</p>",
+                status_code=404
+            )
+
+        sensor = {
+            "Temp": sensor_row.Temp,
+            "RelH": sensor_row.RelH,
+            "Occ": sensor_row.Occ,
+            "Act": sensor_row.Act,
+            "Door": sensor_row.Door,
+            "Win": sensor_row.Win,
+            "L1": sensor_row.L1,
+            "L2": sensor_row.L2,
+        }
+
+        return templates.TemplateResponse("_sensors_form.html", {
+            "request": request,
+            "sensor": sensor,
+            "room_id": room_id
+        })
+
 
 @router.post("/room/{room_id}/sensors", response_class=HTMLResponse)
 async def update_sensor_form(
@@ -67,39 +66,74 @@ async def update_sensor_form(
     L1: int = Form(...),
     L2: int = Form(...)
 ):
-    room_data[room_id]["sensor"] = {
-        "Temp": Temp, "RelH": RelH, "Occ": Occ, "Act": Act,
-        "Door": Door, "Win": Win, "L1": L1, "L2": L2
-    }
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(SensorData).where(SensorData.room == room_id).order_by(SensorData.created_at.desc()).limit(1)
+        )
+        sensor = result.scalar_one_or_none()
+
+        if sensor:
+            sensor.Temp = Temp
+            sensor.RelH = RelH
+            sensor.Occ = Occ
+            sensor.Act = Act
+            sensor.Door = Door
+            sensor.Win = Win
+            sensor.L1 = L1
+            sensor.L2 = L2
+            sensor.created_at = datetime.now()
+
+        await session.commit()
+
+    from .room import get_sensor_form
     return await get_sensor_form(request, room_id)
+
 
 @router.get("/room/{room_id}/predict", response_class=HTMLResponse)
 async def predict_temp(request: Request, room_id: str):
-    sensor = room_data[room_id]["sensor"]
-    prediction = round(sensor["Temp"] + 0.3 * sensor["Occ"] - 0.2 * sensor["Door"], 1)
+    # TODO load from the trained model to predict the room temperature based on KNN!
+    prediction = 23.5
     return templates.TemplateResponse("_predicted_temp.html", {
         "request": request,
         "predicted_temp": prediction
     })
 
+
 @router.get("/room/{room_id}/preference", response_class=HTMLResponse)
 async def get_preference(request: Request, room_id: str):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(RoomPreference)
+            .where(RoomPreference.room == room_id)
+            .order_by(RoomPreference.created_at.desc())
+            .limit(1)
+        )
+        pref = result.scalar_one_or_none()
+
     return templates.TemplateResponse("_preference_form.html", {
         "request": request,
-        "preference_temp": room_data[room_id]["preference"],
+        "preference_temp": pref.temperature,
         "room_id": room_id
     })
 
+
 @router.post("/room/{room_id}/preference", response_class=HTMLResponse)
-async def update_preference(request: Request, room_id: str, preference: float = Form(...)):
-    room_data[room_id]["preference"] = preference
+async def insert_preference(request: Request, room_id: str, preference: float = Form(...)):
+    async with AsyncSessionLocal() as session:
+        new_pref = ComfortPreference(
+            room=room_id,
+            temperature=preference
+        )
+        session.add(new_pref)
+        await session.commit()
+
+    from .room import get_preference
     return await get_preference(request, room_id)
 
 
 @router.post("/room/{room_id}/optimize", response_class=HTMLResponse)
 async def optimize_room(request: Request, room_id: str):
-    # Simulate optimization: set Temp to preferred, adjust others slightly
-    preference = room_data[room_id]["preference"]
+    preference = 22
     optimized_sensor = {
         "Temp": round(preference, 1),
         "RelH": 40 + (preference % 10),  # Fake logic
@@ -110,8 +144,6 @@ async def optimize_room(request: Request, room_id: str):
         "L1": 550,
         "L2": 770
     }
-
-    room_data[room_id]["sensor"] = optimized_sensor
 
     return templates.TemplateResponse("_sensors_form.html", {
         "request": request,
