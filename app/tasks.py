@@ -17,10 +17,7 @@ async def update_all_predictions():
             sensor = result.scalar_one_or_none()
 
             if sensor:
-                # Define the expected feature names in the same order used in training
                 FEATURES = ["RelH", "L1", "L2", "Occ", "Act", "Door", "Win"]
-
-                # Create a DataFrame with feature names to avoid sklearn warning
                 df_features = pd.DataFrame([[
                     sensor.RelH,
                     sensor.L1,
@@ -31,7 +28,6 @@ async def update_all_predictions():
                     sensor.Win
                 ]], columns=FEATURES)
 
-                # Predict and update
                 prediction = model.predict(df_features)[0]
                 sensor.Temp = round(prediction, 2)
                 sensor.created_at = datetime.now()
