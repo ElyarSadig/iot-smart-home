@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
@@ -93,7 +93,8 @@ async def update_sensor_form(
 
 @router.get("/room/{room_id}/predict", response_class=HTMLResponse)
 async def predict_temp(request: Request, room_id: str):
-    model = model_registry.get(room_id)
+    model_key = f"knn_{room_id}"
+    model = model_registry.get(model_key)
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -126,18 +127,27 @@ async def predict_temp(request: Request, room_id: str):
 
 @router.get("/room/{room_id}/preference", response_class=HTMLResponse)
 async def get_preference(request: Request, room_id: str):
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(RoomPreference)
-            .where(RoomPreference.room == room_id)
-            .order_by(RoomPreference.created_at.desc())
-            .limit(1)
-        )
-        pref = result.scalar_one_or_none()
+    model_key = f"rf_{room_id.upper()}"
+    model = model_registry.get(model_key)
+
+    if model is None:
+        raise HTTPException(status_code=500, detail=f"Model not loaded for room: {room_id}")
+
+    now = datetime.now()
+    input_df = pd.DataFrame([{
+        "hour": now.hour,
+        "minute": now.minute,
+        "dayofweek": now.weekday()
+    }])
+
+    try:
+        prediction = model.predict(input_df)[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
     return templates.TemplateResponse("_preference_form.html", {
         "request": request,
-        "preference_temp": pref.temperature,
+        "preference_temp": round(prediction, 2),
         "room_id": room_id
     })
 
