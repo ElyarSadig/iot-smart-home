@@ -57,7 +57,6 @@ async def get_sensor_form(request: Request, room_id: str):
 async def update_sensor_form(
     request: Request,
     room_id: str,
-    Temp: float = Form(...),
     RelH: float = Form(...),
     Occ: int = Form(...),
     Act: int = Form(...),
@@ -68,12 +67,14 @@ async def update_sensor_form(
 ):
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            select(SensorData).where(SensorData.room == room_id).order_by(SensorData.created_at.desc()).limit(1)
+            select(SensorData)
+            .where(SensorData.room == room_id)
+            .order_by(SensorData.created_at.desc())
+            .limit(1)
         )
         sensor = result.scalar_one_or_none()
 
         if sensor:
-            sensor.Temp = Temp
             sensor.RelH = RelH
             sensor.Occ = Occ
             sensor.Act = Act
@@ -85,7 +86,6 @@ async def update_sensor_form(
 
         await session.commit()
 
-    from .room import get_sensor_form
     return await get_sensor_form(request, room_id)
 
 
