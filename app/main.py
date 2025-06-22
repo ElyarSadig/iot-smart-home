@@ -1,12 +1,18 @@
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.requests import Request
 from app.routers import home, room
+from app.model_registery import load_models
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from app.tasks import update_all_predictions
+
+load_models()
+
+scheduler = AsyncIOScheduler()
+scheduler.add_job(update_all_predictions, 'interval', seconds=5)  # every 5s
+scheduler.start()
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 app.include_router(home.router)

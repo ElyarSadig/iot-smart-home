@@ -14,8 +14,8 @@ class SensorData(Base):
     Act = Column(Integer)
     Door = Column(Integer)
     Win = Column(Integer)
-    L1 = Column(Integer) 
-    L2 = Column(Integer)
+    L1 = Column(Float) 
+    L2 = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class ComfortPreference(Base):

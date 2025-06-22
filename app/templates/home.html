@@ -33,16 +33,15 @@
       </li>
       <li>
         <strong>🪟 Window:</strong>
-        {% if room.Win == 1 %}<span class="text-green-600">Closed</span>
+        {% if room.Win == 0 %}<span class="text-green-600">Closed</span>
         {% else %}<span class="text-red-600">Open</span>{% endif %}
       </li>
     </ul>
 
     <div class="mt-3 text-sm">
-      <strong class="text-gray-600">Predicted:</strong>
+      <strong class="text-gray-600">Temperature:</strong>
       <span class="font-semibold text-blue-700 ml-1">
-        {{ room.Temp + 0.3 * room.Occ - 0.2 * room.Door |
-        round(1) }}°C
+        {{ room.Temp }}°C
       </span>
     </div>
 

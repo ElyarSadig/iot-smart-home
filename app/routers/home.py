@@ -39,7 +39,7 @@ async def get_home(request: Request):
                 "Door": row.Door,
                 "Win": row.Win,
                 "Comfort": pref_map.get(row.room, None),
-                "Prediction": round(row.Temp + 1.5, 1)  # Mock predicted temp
+                "Prediction": round(row.Temp, 1)  # Mock predicted temp
             })
 
     return templates.TemplateResponse("home.html", {

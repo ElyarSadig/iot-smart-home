@@ -7,6 +7,8 @@ from app.database.models import SensorData, ComfortPreference, RoomPreference
 from datetime import datetime
 from pathlib import Path
 from fastapi import Form
+from app.model_registery import model_registry
+import pandas as pd
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
@@ -31,7 +33,7 @@ async def get_sensor_form(request: Request, room_id: str):
 
         if not sensor_row:
             return HTMLResponse(
-                content=f"<p class='text-red-500'>❌ No sensor data found for room {room_id}.</p>",
+                content=f"<p class='text-red-500'> No sensor data found for room {room_id}.</p>",
                 status_code=404
             )
 
@@ -62,8 +64,8 @@ async def update_sensor_form(
     Act: int = Form(...),
     Door: int = Form(...),
     Win: int = Form(...),
-    L1: int = Form(...),
-    L2: int = Form(...)
+    L1: float = Form(...),
+    L2: float = Form(...)
 ):
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -91,11 +93,34 @@ async def update_sensor_form(
 
 @router.get("/room/{room_id}/predict", response_class=HTMLResponse)
 async def predict_temp(request: Request, room_id: str):
-    # TODO load from the trained model to predict the room temperature based on KNN!
-    prediction = 23.5
+    model = model_registry.get(room_id)
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(SensorData)
+            .where(SensorData.room == room_id)
+            .order_by(SensorData.created_at.desc())
+            .limit(1)
+        )
+        sensor = result.scalar_one_or_none()
+
+        # Prepare feature dictionary using correct names
+        features_dict = {
+            "RelH": sensor.RelH,
+            "L1": sensor.L1,
+            "L2": sensor.L2,
+            "Occ": sensor.Occ,
+            "Act": sensor.Act,
+            "Door": sensor.Door,
+            "Win": sensor.Win
+        }
+
+        input_df = pd.DataFrame([features_dict])
+        prediction = model.predict(input_df)[0]
+
     return templates.TemplateResponse("_predicted_temp.html", {
         "request": request,
-        "predicted_temp": prediction
+        "predicted_temp": round(prediction, 2)
     })
 
 
